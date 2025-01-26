@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { fetchQuestionTypes, searchQuestions } from "../api";
 import SearchBox from "../components/SearchBox";
 import QuestionList from "../components/QuestionList";
 import Pagination from "../components/Pagination";
 import Sidebar from "../components/Sidebar";
 import ScrollToTop from "../components/ScrollToTop";
+import debounce from "lodash.debounce"; 
 
 export default function QuestionsPage() {
   const [query, setQuery] = useState("");
@@ -15,7 +16,9 @@ export default function QuestionsPage() {
   const [questionTypes, setQuestionTypes] = useState([]);
   const [sortOrder, setSortOrder] = useState("default");
   const [view, setView] = useState("list");
+  const [error, setError] = useState(null);
 
+  // Fetch question types on mount
   useEffect(() => {
     const loadQuestionTypes = async () => {
       try {
@@ -23,33 +26,40 @@ export default function QuestionsPage() {
         setQuestionTypes(types);
       } catch (error) {
         console.error("Error loading question types:", error);
+        setError("Failed to load question types. Please try again later.");
       }
     };
     loadQuestionTypes();
   }, []);
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (query, typeFilter, sortOrder, page) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await searchQuestions(query, page, 10, typeFilter, sortOrder);
+        setResults(data);
+      } catch (error) {
+        console.error("Error:", error);
+        setError("Failed to fetch questions. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }, 500), // 500ms delay
+    []
+  );
+
   // Trigger search when query, typeFilter, or sortOrder changes
   useEffect(() => {
-    setPage(1); // Resets to page 1 when filters change
-    handleSearch();
-  }, [query, typeFilter, sortOrder]);
+    setPage(1); // Reset to page 1 when filters change
+    debouncedSearch(query, typeFilter, sortOrder, 1);
+  }, [query, typeFilter, sortOrder, debouncedSearch]);
 
   // Trigger search when page changes
   useEffect(() => {
-    handleSearch();
-  }, [page]);
-
-  const handleSearch = async () => {
-    setLoading(true);
-    try {
-      const data = await searchQuestions(query, page, 10, typeFilter, sortOrder);
-      setResults(data);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    debouncedSearch(query, typeFilter, sortOrder, page);
+  }, [page, debouncedSearch]);
 
   const getTitle = () => {
     if (typeFilter) {
@@ -83,12 +93,14 @@ export default function QuestionsPage() {
             setSortOrder={setSortOrder}
             view={view}
             setView={setView}
-            onSearch={handleSearch}
+            onSearch={() => debouncedSearch(query, typeFilter, sortOrder, page)}
           />
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-orange-500"></div>
             </div>
+          ) : error ? (
+            <div className="text-center text-red-600">{error}</div>
           ) : (
             <>
               <QuestionList questions={results.questions} view={view} sortOrder={sortOrder} />
@@ -97,7 +109,7 @@ export default function QuestionsPage() {
                 total={results.total}
                 limit={10}
                 onPageChange={(newPage) => {
-                  setPage(newPage); 
+                  setPage(newPage);
                 }}
               />
             </>
