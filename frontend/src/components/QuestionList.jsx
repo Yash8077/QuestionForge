@@ -152,8 +152,8 @@ export default function QuestionList({ questions, view, sortOrder }) {
                 ${q.type === "MCQ" ? "bg-blue-100 text-blue-800" : ""}
                 ${q.type === "ANAGRAM" ? "bg-green-100 text-green-800" : ""}
                 ${q.type === "READ_ALONG" ? "bg-purple-100 text-purple-800" : ""}
-                ${q.type === "CONVERSATION" ? "bg-blue-100 text-blue-800" : ""}
-                ${q.type === "CONTENT_ONLY" ? "bg-green-100 text-green-800" : ""}
+                ${q.type === "CONVERSATION" ? "bg-indigo-100 text-indigo-800" : ""}
+                ${q.type === "CONTENT_ONLY" ? "bg-pink-100 text-pink-800" : ""}
               `}
             >
               {q.type}
